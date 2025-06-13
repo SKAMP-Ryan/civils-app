@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Civil's App</title>
+    <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiQ2l2aWwncyBBcHAiLCJzaG9ydF9uYW1lIjoiQ2l2aWxBcHAiLCJzdGFydF91cmwiOiIvIiwiZGlzcGxheSI6InN0YW5kYWxvbmUiLCJiYWNrZ3JvdW5kX2NvbG9yIjoiIzgwODA4MCIsInRoZW1lX2NvbG9yIjoiIzQwNzlmZiIsImljb25zIjpbeyJzcmMiOiJkYXRhOmltYWdlL3N2Zyt4bWw7YmFzZTY0LFBITjJaeUI0Yld4dWN6MGlhSFIwY0RvdkwzZDNkeTUzTXk1dmNtY3ZNakF3TUM5emRtY2lJSGRwWkhSb1BTSXlOVFlpSUdobGFXZG9kRDBpTWpVMklqNDhjbVZqZENCM2FXUjBhRDBpTWpVMklpQm9aV2xuYUhROUlqSTFOaUlnWm1sc2JEMGlJelF3TnpsbVppSXZQand2YzNablBnPT0iLCJzaXplcyI6IjI1NngyNTYiLCJ0eXBlIjoiaW1hZ2Uvc3ZnK3htbCJ9XX0=">
+    <meta name="theme-color" content="#4079ff">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #808080;
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+            font-size: 2.5em;
+        }
+
+        .input-box {
+            background-color: #4079ff;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .input-box label {
+            display: block;
+            color: white;
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .input-box input {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 4px;
+            font-size: 1.1em;
+            background: white;
+        }
+
+        .status {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .offline {
+            color: #ff4444;
+        }
+
+        .online {
+            color: #44ff44;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Civil's App</h1>
+        
+        <div class="input-box">
+            <label for="siteNumber">Site Number</label>
+            <input type="number" id="siteNumber" placeholder="Enter site number">
+        </div>
+        
+        <div class="status" id="status">Connecting...</div>
+    </div>
+
+    <script>
+        // Supabase configuration
+        const SUPABASE_URL = 'https://yikwoqmvwybdapuocoaa.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlpa3dvcW12d3liZGFwdW9jb2FhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk3OTU5MTQsImV4cCI6MjA2NTM3MTkxNH0.OWY6VL54cp63PnbZLFPZd4Ht7WFBSxdoleYz8nMNx9Q';
+
+        let supabase;
+        let subscription;
+
+        // Initialize the app
+        async function initApp() {
+            try {
+
+            try {
+                // Import Supabase
+                const { createClient } = await import('https://cdn.skypack.dev/@supabase/supabase-js@2');
+                supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+                // Load initial data
+                await loadSiteNumber();
+                
+                // Set up real-time subscription
+                setupRealtime();
+                
+                // Set up input handler
+                setupInputHandler();
+                
+                document.getElementById('status').innerHTML = '<span class="online">● Connected</span>';
+            } catch (error) {
+                console.error('Failed to initialize:', error);
+                document.getElementById('status').innerHTML = '<span class="offline">● Connection failed</span>';
+            }
+        }
+
+        async function loadSiteNumber() {
+            try {
+                const { data, error } = await supabase
+                    .from('site_data')
+                    .select('site_number')
+                    .eq('id', 1)
+                    .single();
+
+                if (error && error.code !== 'PGRST116') {
+                    throw error;
+                }
+
+                if (data) {
+                    document.getElementById('siteNumber').value = data.site_number || '';
+                }
+            } catch (error) {
+                console.error('Error loading site number:', error);
+            }
+        }
+
+        function setupRealtime() {
+            subscription = supabase
+                .channel('site_data_changes')
+                .on('postgres_changes', {
+                    event: '*',
+                    schema: 'public',
+                    table: 'site_data'
+                }, (payload) => {
+                    if (payload.new && payload.new.site_number !== undefined) {
+                        document.getElementById('siteNumber').value = payload.new.site_number || '';
+                    }
+                })
+                .subscribe();
+        }
+
+        function setupInputHandler() {
+            const input = document.getElementById('siteNumber');
+            let timeoutId;
+
+            input.addEventListener('input', () => {
+                clearTimeout(timeoutId);
+                timeoutId = setTimeout(async () => {
+                    await saveSiteNumber(input.value);
+                }, 500); // Debounce for 500ms
+            });
+        }
+
+        async function saveSiteNumber(value) {
+            try {
+                const { error } = await supabase
+                    .from('site_data')
+                    .upsert({
+                        id: 1,
+                        site_number: value || null
+                    });
+
+                if (error) throw error;
+            } catch (error) {
+                console.error('Error saving site number:', error);
+                document.getElementById('status').innerHTML = '<span class="offline">● Save failed</span>';
+                setTimeout(() => {
+                    document.getElementById('status').innerHTML = '<span class="online">● Connected</span>';
+                }, 2000);
+            }
+        }
+
+        // PWA Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('data:text/javascript;base64,Y29uc3QgQ0FDSEVfTkFNRSA9ICdjaXZpbHMtYXBwLXYxJzsKY29uc3QgdXJsc1RvQ2FjaGUgPSBbJy4vJ107CgpzZWxmLmFkZEV2ZW50TGlzdGVuZXIoJ2luc3RhbGwnLCAoZXZlbnQpID0+IHsKICBldmVudC53YWl0VW50aWwoY2FjaGVzLm9wZW4oQ0FDSEVfTkFNRSkudGhlbigoY2FjaGUpID0+IGNhY2hlLmFkZEFsbCh1cmxzVG9DYWNoZSkpKTsKfSk7CgpzZWxmLmFkZEV2ZW50TGlzdGVuZXIoJ2ZldGNoJywgKGV2ZW50KSA9PiB7CiAgZXZlbnQucmVzcG9uZFdpdGgoY2FjaGVzLm1hdGNoKGV2ZW50LnJlcXVlc3QpLnRoZW4oKHJlc3BvbnNlKSA9PiByZXNwb25zZSB8fCBmZXRjaChldmVudC5yZXF1ZXN0KSkpOwp9KTs=');
+        }
+
+        // Initialize when page loads
+        initApp();
+    </script>
+</body>
+</html>
