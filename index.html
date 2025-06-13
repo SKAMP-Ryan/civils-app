@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Civil's App</title>
-    <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiQ2l2aWwncyBBcHAiLCJzaG9ydF9uYW1lIjoiQ2l2aWxBcHAiLCJzdGFydF91cmwiOiIuLyIsImRpc3BsYXkiOiJzdGFuZGFsb25lIiwiYmFja2dyb3VuZF9jb2xvciI6IiM4MDgwODAiLCJ0aGVtZV9jb2xvciI6IiM0MDc5ZmYiLCJpY29ucyI6W3sic3JjIjoiZGF0YTppbWFnZS9zdmcreG1sO2Jhc2U2NCxQSE4yWnlCNGJXeHVjejBpYUhSMGNEb3ZMM2QzZHk1M015NXZjbWN2TWpBd01DOXpkbWNpSUhkcFpIUm9QU0l5TlRZaUlHaGxhV2RvZEQwaU1qVTJJajQ4Y21WamRDQjNhV1IwYUQwaU1qVTJJaUJvWldsbmFIUTlJakkxTmlJZ1ptbHNiRDBpSXpRd056bG1aaUl2UGp3dmMzWm5QZz09Iiwic2l6ZXMiOiIyNTZ4MjU2IiwidHlwZSI6ImltYWdlL3N2Zyt4bWwifV19">
     <meta name="theme-color" content="#4079ff">
     <style>
         * {
@@ -89,6 +88,7 @@
         <div class="status" id="status">Connecting...</div>
     </div>
 
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script>
         // Supabase configuration
         const SUPABASE_URL = 'https://yikwoqmvwybdapuocoaa.supabase.co';
@@ -100,9 +100,8 @@
         // Initialize the app
         async function initApp() {
             try {
-                // Import Supabase
-                const { createClient } = await import('https://cdn.skypack.dev/@supabase/supabase-js@2');
-                supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+                // Create Supabase client
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
                 // Load initial data
                 await loadSiteNumber();
@@ -184,11 +183,6 @@
                     document.getElementById('status').innerHTML = '<span class="online">● Connected</span>';
                 }, 2000);
             }
-        }
-
-        // PWA Service Worker Registration
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('data:text/javascript;base64,Y29uc3QgQ0FDSEVfTkFNRSA9ICdjaXZpbHMtYXBwLXYxJzsKY29uc3QgdXJsc1RvQ2FjaGUgPSBbJy4vJ107CgpzZWxmLmFkZEV2ZW50TGlzdGVuZXIoJ2luc3RhbGwnLCAoZXZlbnQpID0+IHsKICBldmVudC53YWl0VW50aWwoY2FjaGVzLm9wZW4oQ0FDSEVfTkFNRSkudGhlbigoY2FjaGUpID0+IGNhY2hlLmFkZEFsbCh1cmxzVG9DYWNoZSkpKTsKfSk7CgpzZWxmLmFkZEV2ZW50TGlzdGVuZXIoJ2ZldGNoJywgKGV2ZW50KSA9PiB7CiAgZXZlbnQucmVzcG9uZFdpdGgoY2FjaGVzLm1hdGNoKGV2ZW50LnJlcXVlc3QpLnRoZW4oKHJlc3BvbnNlKSA9PiByZXNwb25zZSB8fCBmZXRjaChldmVudC5yZXF1ZXN0KSkpOwp9KTs=');
         }
 
         // Initialize when page loads
