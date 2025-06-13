@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Civil's App</title>
-    <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiQ2l2aWwncyBBcHAiLCJzaG9ydF9uYW1lIjoiQ2l2aWxBcHAiLCJzdGFydF91cmwiOiIvIiwiZGlzcGxheSI6InN0YW5kYWxvbmUiLCJiYWNrZ3JvdW5kX2NvbG9yIjoiIzgwODA4MCIsInRoZW1lX2NvbG9yIjoiIzQwNzlmZiIsImljb25zIjpbeyJzcmMiOiJkYXRhOmltYWdlL3N2Zyt4bWw7YmFzZTY0LFBITjJaeUI0Yld4dWN6MGlhSFIwY0RvdkwzZDNkeTUzTXk1dmNtY3ZNakF3TUM5emRtY2lJSGRwWkhSb1BTSXlOVFlpSUdobGFXZG9kRDBpTWpVMklqNDhjbVZqZENCM2FXUjBhRDBpTWpVMklpQm9aV2xuYUhROUlqSTFOaUlnWm1sc2JEMGlJelF3TnpsbVppSXZQand2YzNablBnPT0iLCJzaXplcyI6IjI1NngyNTYiLCJ0eXBlIjoiaW1hZ2Uvc3ZnK3htbCJ9XX0=">
+    <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiQ2l2aWwncyBBcHAiLCJzaG9ydF9uYW1lIjoiQ2l2aWxBcHAiLCJzdGFydF91cmwiOiIuLyIsImRpc3BsYXkiOiJzdGFuZGFsb25lIiwiYmFja2dyb3VuZF9jb2xvciI6IiM4MDgwODAiLCJ0aGVtZV9jb2xvciI6IiM0MDc5ZmYiLCJpY29ucyI6W3sic3JjIjoiZGF0YTppbWFnZS9zdmcreG1sO2Jhc2U2NCxQSE4yWnlCNGJXeHVjejBpYUhSMGNEb3ZMM2QzZHk1M015NXZjbWN2TWpBd01DOXpkbWNpSUhkcFpIUm9QU0l5TlRZaUlHaGxhV2RvZEQwaU1qVTJJajQ4Y21WamRDQjNhV1IwYUQwaU1qVTJJaUJvWldsbmFIUTlJakkxTmlJZ1ptbHNiRDBpSXpRd056bG1aaUl2UGp3dmMzWm5QZz09Iiwic2l6ZXMiOiIyNTZ4MjU2IiwidHlwZSI6ImltYWdlL3N2Zyt4bWwifV19">
     <meta name="theme-color" content="#4079ff">
     <style>
         * {
@@ -100,8 +100,6 @@
         // Initialize the app
         async function initApp() {
             try {
-
-            try {
                 // Import Supabase
                 const { createClient } = await import('https://cdn.skypack.dev/@supabase/supabase-js@2');
                 supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -165,7 +163,7 @@
                 clearTimeout(timeoutId);
                 timeoutId = setTimeout(async () => {
                     await saveSiteNumber(input.value);
-                }, 500); // Debounce for 500ms
+                }, 500);
             });
         }
 
