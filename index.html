@@ -397,6 +397,10 @@
                 }
 
                 console.log('Database update successful');
+                
+                // Display photo immediately (don't wait for real-time update)
+                displayPhoto(urlData.publicUrl);
+                
                 document.getElementById('status').innerHTML = '<span class="online">● Connected</span>';
                 
             } catch (error) {
