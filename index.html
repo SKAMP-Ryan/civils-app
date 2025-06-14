@@ -75,6 +75,91 @@
         .online {
             color: #44ff44;
         }
+
+        .photo-section {
+            margin-top: 30px;
+        }
+
+        .photo-label {
+            display: block;
+            color: #333;
+            font-weight: bold;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .photo-container {
+            border: 2px dashed #4079ff;
+            border-radius: 10px;
+            min-height: 300px;
+            position: relative;
+            overflow: hidden;
+            background: #f8f9fa;
+        }
+
+        .photo-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 300px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .photo-placeholder:hover {
+            background-color: #e3f2fd;
+        }
+
+        .upload-icon {
+            font-size: 3em;
+            margin-bottom: 10px;
+            opacity: 0.6;
+        }
+
+        .photo-placeholder p {
+            color: #666;
+            margin: 0;
+            font-size: 1.1em;
+        }
+
+        .photo-viewer {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        .photo-viewer img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            cursor: grab;
+            transition: transform 0.1s ease-out;
+        }
+
+        .photo-viewer img:active {
+            cursor: grabbing;
+        }
+
+        .change-photo-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #4079ff;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .change-photo-btn:hover {
+            background: #2059dd;
+        }
     </style>
 </head>
 <body>
@@ -84,6 +169,21 @@
         <div class="input-box">
             <label for="siteNumber">Site Number</label>
             <input type="number" id="siteNumber" placeholder="Enter site number">
+        </div>
+
+        <div class="photo-section">
+            <label class="photo-label">Site Plan Photo</label>
+            <div class="photo-container" id="photoContainer">
+                <div class="photo-placeholder" id="photoPlaceholder">
+                    <div class="upload-icon">📸</div>
+                    <p>Tap to upload site plan photo</p>
+                    <input type="file" id="photoInput" accept="image/*" style="display: none;">
+                </div>
+                <div class="photo-viewer" id="photoViewer" style="display: none;">
+                    <img id="sitePhoto" alt="Site Plan">
+                    <button class="change-photo-btn" id="changePhotoBtn">Change Photo</button>
+                </div>
+            </div>
         </div>
         
         <div class="status" id="status">Connecting...</div>
@@ -97,6 +197,9 @@
 
         let supabase;
         let subscription;
+        let photoTransform = { scale: 1, translateX: 0, translateY: 0 };
+        let isDragging = false;
+        let startX, startY;
 
         // Initialize the app
         async function initApp() {
@@ -106,12 +209,14 @@
 
                 // Load initial data
                 await loadSiteNumber();
+                await loadSitePhoto();
                 
                 // Set up real-time subscription
                 setupRealtime();
                 
                 // Set up input handler
                 setupInputHandler();
+                setupPhotoHandlers();
                 
                 document.getElementById('status').innerHTML = '<span class="online">● Connected</span>';
             } catch (error) {
@@ -148,8 +253,20 @@
                     schema: 'public',
                     table: 'site_data'
                 }, (payload) => {
-                    if (payload.new && payload.new.site_number !== undefined) {
-                        document.getElementById('siteNumber').value = payload.new.site_number || '';
+                    if (payload.new) {
+                        // Update site number if changed
+                        if (payload.new.site_number !== undefined) {
+                            document.getElementById('siteNumber').value = payload.new.site_number || '';
+                        }
+                        
+                        // Update photo if changed
+                        if (payload.new.photo_url !== undefined) {
+                            if (payload.new.photo_url) {
+                                displayPhoto(payload.new.photo_url);
+                            } else {
+                                showPhotoPlaceholder();
+                            }
+                        }
                     }
                 })
                 .subscribe();
@@ -184,6 +301,200 @@
                     document.getElementById('status').innerHTML = '<span class="online">● Connected</span>';
                 }, 2000);
             }
+        }
+
+        async function loadSitePhoto() {
+            try {
+                const { data, error } = await supabase
+                    .from('site_data')
+                    .select('photo_url')
+                    .eq('id', 1)
+                    .single();
+
+                if (error && error.code !== 'PGRST116') {
+                    throw error;
+                }
+
+                if (data && data.photo_url) {
+                    displayPhoto(data.photo_url);
+                } else {
+                    showPhotoPlaceholder();
+                }
+            } catch (error) {
+                console.error('Error loading site photo:', error);
+                showPhotoPlaceholder();
+            }
+        }
+
+        function setupPhotoHandlers() {
+            const photoInput = document.getElementById('photoInput');
+            const photoPlaceholder = document.getElementById('photoPlaceholder');
+            const changePhotoBtn = document.getElementById('changePhotoBtn');
+            const sitePhoto = document.getElementById('sitePhoto');
+
+            // Click handlers for upload
+            photoPlaceholder.addEventListener('click', () => photoInput.click());
+            changePhotoBtn.addEventListener('click', () => photoInput.click());
+
+            // File upload handler
+            photoInput.addEventListener('change', handlePhotoUpload);
+
+            // Pan and zoom handlers
+            setupPhotoInteraction(sitePhoto);
+        }
+
+        async function handlePhotoUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Show loading state
+            document.getElementById('status').innerHTML = '<span class="online">● Uploading photo...</span>';
+
+            try {
+                // Upload file to Supabase Storage
+                const fileExt = file.name.split('.').pop();
+                const fileName = `site-plan.${fileExt}`;
+                
+                const { data: uploadData, error: uploadError } = await supabase.storage
+                    .from('site-photos')
+                    .upload(fileName, file, { 
+                        cacheControl: '3600',
+                        upsert: true 
+                    });
+
+                if (uploadError) throw uploadError;
+
+                // Get public URL
+                const { data: urlData } = supabase.storage
+                    .from('site-photos')
+                    .getPublicUrl(fileName);
+
+                // Save URL to database
+                const { error: dbError } = await supabase
+                    .from('site_data')
+                    .upsert({
+                        id: 1,
+                        photo_url: urlData.publicUrl
+                    });
+
+                if (dbError) throw dbError;
+
+                document.getElementById('status').innerHTML = '<span class="online">● Connected</span>';
+                
+            } catch (error) {
+                console.error('Error uploading photo:', error);
+                document.getElementById('status').innerHTML = '<span class="offline">● Upload failed</span>';
+                setTimeout(() => {
+                    document.getElementById('status').innerHTML = '<span class="online">● Connected</span>';
+                }, 3000);
+            }
+
+            // Clear the input
+            event.target.value = '';
+        }
+
+        function displayPhoto(photoUrl) {
+            document.getElementById('photoPlaceholder').style.display = 'none';
+            document.getElementById('photoViewer').style.display = 'block';
+            document.getElementById('sitePhoto').src = photoUrl;
+            resetPhotoTransform();
+        }
+
+        function showPhotoPlaceholder() {
+            document.getElementById('photoPlaceholder').style.display = 'flex';
+            document.getElementById('photoViewer').style.display = 'none';
+        }
+
+        function setupPhotoInteraction(img) {
+            let initialDistance = 0;
+            let initialScale = 1;
+
+            // Mouse events for desktop
+            img.addEventListener('mousedown', handleMouseDown);
+            img.addEventListener('wheel', handleWheel, { passive: false });
+
+            // Touch events for mobile
+            img.addEventListener('touchstart', handleTouchStart, { passive: false });
+            img.addEventListener('touchmove', handleTouchMove, { passive: false });
+            img.addEventListener('touchend', handleTouchEnd);
+
+            function handleMouseDown(e) {
+                e.preventDefault();
+                isDragging = true;
+                startX = e.clientX - photoTransform.translateX;
+                startY = e.clientY - photoTransform.translateY;
+
+                document.addEventListener('mousemove', handleMouseMove);
+                document.addEventListener('mouseup', handleMouseUp);
+            }
+
+            function handleMouseMove(e) {
+                if (!isDragging) return;
+                e.preventDefault();
+                photoTransform.translateX = e.clientX - startX;
+                photoTransform.translateY = e.clientY - startY;
+                updatePhotoTransform();
+            }
+
+            function handleMouseUp() {
+                isDragging = false;
+                document.removeEventListener('mousemove', handleMouseMove);
+                document.removeEventListener('mouseup', handleMouseUp);
+            }
+
+            function handleWheel(e) {
+                e.preventDefault();
+                const delta = e.deltaY > 0 ? 0.9 : 1.1;
+                photoTransform.scale = Math.max(0.5, Math.min(5, photoTransform.scale * delta));
+                updatePhotoTransform();
+            }
+
+            function handleTouchStart(e) {
+                e.preventDefault();
+                if (e.touches.length === 1) {
+                    isDragging = true;
+                    startX = e.touches[0].clientX - photoTransform.translateX;
+                    startY = e.touches[0].clientY - photoTransform.translateY;
+                } else if (e.touches.length === 2) {
+                    initialDistance = getDistance(e.touches[0], e.touches[1]);
+                    initialScale = photoTransform.scale;
+                }
+            }
+
+            function handleTouchMove(e) {
+                e.preventDefault();
+                if (e.touches.length === 1 && isDragging) {
+                    photoTransform.translateX = e.touches[0].clientX - startX;
+                    photoTransform.translateY = e.touches[0].clientY - startY;
+                    updatePhotoTransform();
+                } else if (e.touches.length === 2) {
+                    const currentDistance = getDistance(e.touches[0], e.touches[1]);
+                    const scale = (currentDistance / initialDistance) * initialScale;
+                    photoTransform.scale = Math.max(0.5, Math.min(5, scale));
+                    updatePhotoTransform();
+                }
+            }
+
+            function handleTouchEnd() {
+                isDragging = false;
+            }
+
+            function getDistance(touch1, touch2) {
+                return Math.sqrt(
+                    Math.pow(touch2.clientX - touch1.clientX, 2) +
+                    Math.pow(touch2.clientY - touch1.clientY, 2)
+                );
+            }
+        }
+
+        function updatePhotoTransform() {
+            const img = document.getElementById('sitePhoto');
+            img.style.transform = `scale(${photoTransform.scale}) translate(${photoTransform.translateX}px, ${photoTransform.translateY}px)`;
+        }
+
+        function resetPhotoTransform() {
+            photoTransform = { scale: 1, translateX: 0, translateY: 0 };
+            updatePhotoTransform();
         }
 
         // Initialize when page loads
