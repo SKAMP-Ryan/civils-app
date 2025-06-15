@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Civil's App</title>
+    <title>Civil's App - Site Calculator</title>
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#4079ff">
     <style>
         * {
             margin: 0;
@@ -14,58 +13,82 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background-color: #808080;
-            color: #333;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 20px;
         }
 
         .container {
-            max-width: 600px;
+            max-width: 500px;
             margin: 0 auto;
-            background: white;
-            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
             padding: 30px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
         }
 
-        h1 {
+        .header {
             text-align: center;
             margin-bottom: 30px;
+        }
+
+        .header h1 {
             color: #333;
-            font-size: 2.5em;
+            font-size: 2em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .status {
+            text-align: center;
+            margin-bottom: 20px;
+            font-weight: bold;
         }
 
         .input-box {
-            background-color: #4079ff;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
+            margin-bottom: 30px;
         }
 
         .input-box label {
             display: block;
-            color: white;
+            color: #333;
             font-weight: bold;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             font-size: 1.2em;
         }
 
         .input-box input {
             width: 100%;
-            padding: 12px;
-            border: none;
-            border-radius: 4px;
+            padding: 15px;
             font-size: 1.1em;
-            background: white;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            box-sizing: border-box;
+            background: #fff;
         }
 
-        .status {
-            text-align: center;
-            margin-top: 15px;
-            font-size: 0.9em;
-            color: #666;
+        /* Remove number input arrows */
+        .input-box input[type="number"] {
+            -moz-appearance: textfield;
+        }
+
+        .input-box input[type="number"]::-webkit-outer-spin-button,
+        .input-box input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .input-box input:focus {
+            outline: none;
+            border-color: #4079ff;
+            box-shadow: 0 0 10px rgba(64, 121, 255, 0.2);
         }
 
         .offline {
@@ -160,12 +183,30 @@
         .change-photo-btn:hover {
             background: #2059dd;
         }
+
+        @media (max-width: 480px) {
+            .container {
+                margin: 10px;
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 1.6em;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Civil's App</h1>
-        
+        <div class="header">
+            <h1>Civil's App</h1>
+            <p>Site Calculator</p>
+        </div>
+
+        <div id="status" class="status">
+            <span class="offline">● Connecting...</span>
+        </div>
+
         <div class="input-box">
             <label for="siteNumber">Site Number</label>
             <input type="number" id="siteNumber" placeholder="Enter site number">
@@ -175,7 +216,7 @@
             <label class="photo-label">Internal Layout</label>
             <div class="photo-container" id="internalPhotoContainer">
                 <div class="photo-placeholder" id="internalPhotoPlaceholder">
-                    <div class="upload-icon">📸</div>
+                    <div class="upload-icon">+</div>
                     <p>Tap to upload internal layout photo</p>
                     <input type="file" id="internalPhotoInput" accept="image/*" style="display: none;">
                 </div>
@@ -190,7 +231,7 @@
             <label class="photo-label">Overall Site</label>
             <div class="photo-container" id="overallPhotoContainer">
                 <div class="photo-placeholder" id="overallPhotoPlaceholder">
-                    <div class="upload-icon">📸</div>
+                    <div class="upload-icon">+</div>
                     <p>Tap to upload overall site photo</p>
                     <input type="file" id="overallPhotoInput" accept="image/*" style="display: none;">
                 </div>
@@ -200,16 +241,10 @@
                 </div>
             </div>
         </div>
-        
-        <div class="status" id="status">Connecting...</div>
     </div>
 
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        // Supabase configuration
-        const SUPABASE_URL = 'https://yikwoqmvwybdapuocoaa.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlpa3dvcW12d3liZGFwdW9jb2FhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk3OTU5MTQsImV4cCI6MjA2NTM3MTkxNH0.OWY6VL54cp63PnbZLFPZd4Ht7WFBSxdoleYz8nMNx9Q';
-
         let supabase;
         let subscription;
         let internalPhotoTransform = { scale: 1, translateX: 0, translateY: 0 };
@@ -218,10 +253,19 @@
         let startX, startY;
 
         // Initialize the app
-        async function initApp() {
+        async function init() {
             try {
-                // Create Supabase client
-                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                // Initialize Supabase
+                supabase = window.supabase.createClient(
+                    'YOUR_SUPABASE_URL',
+                    'YOUR_SUPABASE_ANON_KEY'
+                );
+
+                // Test connection
+                const { data, error } = await supabase.from('site_data').select('*').limit(1);
+                if (error) throw error;
+
+                document.getElementById('status').innerHTML = '<span class="online">● Connected</span>';
 
                 // Load initial data
                 await loadSiteNumber();
@@ -235,9 +279,8 @@
                 setupInputHandler();
                 setupPhotoHandlers();
                 
-                document.getElementById('status').innerHTML = '<span class="online">● Connected</span>';
             } catch (error) {
-                console.error('Failed to initialize:', error);
+                console.error('Initialization error:', error);
                 document.getElementById('status').innerHTML = '<span class="offline">● Connection failed</span>';
             }
         }
@@ -254,60 +297,12 @@
                     throw error;
                 }
 
-                if (data) {
-                    document.getElementById('siteNumber').value = data.site_number || '';
+                if (data && data.site_number !== null) {
+                    document.getElementById('siteNumber').value = data.site_number;
                 }
             } catch (error) {
                 console.error('Error loading site number:', error);
             }
-        }
-
-        function setupRealtime() {
-            subscription = supabase
-                .channel('site_data_changes')
-                .on('postgres_changes', {
-                    event: '*',
-                    schema: 'public',
-                    table: 'site_data'
-                }, (payload) => {
-                    if (payload.new) {
-                        // Update site number if changed
-                        if (payload.new.site_number !== undefined) {
-                            document.getElementById('siteNumber').value = payload.new.site_number || '';
-                        }
-                        
-                        // Update internal photo if changed
-                        if (payload.new.internal_layout_url !== undefined) {
-                            if (payload.new.internal_layout_url) {
-                                displayPhoto(payload.new.internal_layout_url, 'internal');
-                            } else {
-                                showPhotoPlaceholder('internal');
-                            }
-                        }
-                        
-                        // Update overall photo if changed
-                        if (payload.new.photo_url !== undefined) {
-                            if (payload.new.photo_url) {
-                                displayPhoto(payload.new.photo_url, 'overall');
-                            } else {
-                                showPhotoPlaceholder('overall');
-                            }
-                        }
-                    }
-                })
-                .subscribe();
-        }
-
-        function setupInputHandler() {
-            const input = document.getElementById('siteNumber');
-            let timeoutId;
-
-            input.addEventListener('input', () => {
-                clearTimeout(timeoutId);
-                timeoutId = setTimeout(async () => {
-                    await saveSiteNumber(input.value);
-                }, 500);
-            });
         }
 
         async function saveSiteNumber(value) {
@@ -594,13 +589,68 @@
             updatePhotoTransform(photoType);
         }
 
-        // Initialize when page loads
-        initApp();
-
-        // PWA Service Worker Registration
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./service-worker.js');
+        function setupRealtime() {
+            subscription = supabase
+                .channel('site_data_changes')
+                .on('postgres_changes', {
+                    event: '*',
+                    schema: 'public',
+                    table: 'site_data'
+                }, (payload) => {
+                    if (payload.new) {
+                        // Update site number if changed
+                        if (payload.new.site_number !== undefined) {
+                            document.getElementById('siteNumber').value = payload.new.site_number || '';
+                        }
+                        
+                        // Update internal photo if changed
+                        if (payload.new.internal_layout_url !== undefined) {
+                            if (payload.new.internal_layout_url) {
+                                displayPhoto(payload.new.internal_layout_url, 'internal');
+                            } else {
+                                showPhotoPlaceholder('internal');
+                            }
+                        }
+                        
+                        // Update overall photo if changed
+                        if (payload.new.photo_url !== undefined) {
+                            if (payload.new.photo_url) {
+                                displayPhoto(payload.new.photo_url, 'overall');
+                            } else {
+                                showPhotoPlaceholder('overall');
+                            }
+                        }
+                    }
+                })
+                .subscribe();
         }
+
+        function setupInputHandler() {
+            const input = document.getElementById('siteNumber');
+            let timeout;
+
+            input.addEventListener('input', function() {
+                clearTimeout(timeout);
+                // Show saving indicator
+                document.getElementById('status').innerHTML = '<span class="online">● Saving...</span>';
+                
+                // Save after 500ms of no typing (reduced from 1000ms)
+                timeout = setTimeout(async () => {
+                    await saveSiteNumber(this.value);
+                    document.getElementById('status').innerHTML = '<span class="online">● Connected</span>';
+                }, 500);
+            });
+        }
+
+        // Clean up on page unload
+        window.addEventListener('beforeunload', () => {
+            if (subscription) {
+                subscription.unsubscribe();
+            }
+        });
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>
