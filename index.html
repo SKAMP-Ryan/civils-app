@@ -50,6 +50,29 @@
             text-align: center;
             margin-bottom: 20px;
             font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .refresh-btn {
+            background: #4079ff;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+
+        .refresh-btn:hover {
+            background: #2059dd;
+        }
+
+        .refresh-btn:active {
+            transform: scale(0.95);
         }
 
         .input-box {
@@ -205,6 +228,7 @@
 
         <div id="status" class="status">
             <span class="offline">● Connecting...</span>
+            <button id="refreshBtn" class="refresh-btn">Refresh</button>
         </div>
 
         <div class="input-box">
@@ -265,7 +289,7 @@
                 const { data, error } = await supabase.from('site_data').select('*').limit(1);
                 if (error) throw error;
 
-                document.getElementById('status').innerHTML = '<span class="online">● Connected</span>';
+                document.getElementById('status').innerHTML = '<span class="online">● Connected</span><button id="refreshBtn" class="refresh-btn">Refresh</button>';
 
                 // Load initial data
                 await loadSiteNumber();
@@ -278,6 +302,7 @@
                 // Set up input handler
                 setupInputHandler();
                 setupPhotoHandlers();
+                setupRefreshButton();
                 
             } catch (error) {
                 console.error('Initialization error:', error);
@@ -317,9 +342,11 @@
                 if (error) throw error;
             } catch (error) {
                 console.error('Error saving site number:', error);
-                document.getElementById('status').innerHTML = '<span class="offline">● Save failed</span>';
+                document.getElementById('status').innerHTML = '<span class="offline">● Save failed</span><button id="refreshBtn" class="refresh-btn">Refresh</button>';
+                document.getElementById('refreshBtn').addEventListener('click', refreshData);
                 setTimeout(() => {
-                    document.getElementById('status').innerHTML = '<span class="online">● Connected</span>';
+                    document.getElementById('status').innerHTML = '<span class="online">● Connected</span><button id="refreshBtn" class="refresh-btn">Refresh</button>';
+                    document.getElementById('refreshBtn').addEventListener('click', refreshData);
                 }, 2000);
             }
         }
@@ -405,7 +432,8 @@
             }
 
             // Show loading state
-            document.getElementById('status').innerHTML = '<span class="online">● Uploading photo...</span>';
+            document.getElementById('status').innerHTML = '<span class="online">● Uploading photo...</span><button id="refreshBtn" class="refresh-btn">Refresh</button>';
+            document.getElementById('refreshBtn').addEventListener('click', refreshData);
 
             try {
                 // Create unique filename with timestamp and type
@@ -456,14 +484,17 @@
                 // Display photo immediately (don't wait for real-time update)
                 displayPhoto(urlData.publicUrl, photoType);
                 
-                document.getElementById('status').innerHTML = '<span class="online">● Connected</span>';
+                document.getElementById('status').innerHTML = '<span class="online">● Connected</span><button id="refreshBtn" class="refresh-btn">Refresh</button>';
+                document.getElementById('refreshBtn').addEventListener('click', refreshData);
                 
             } catch (error) {
                 console.error('Error uploading photo:', error);
                 console.error('Full error details:', JSON.stringify(error, null, 2));
-                document.getElementById('status').innerHTML = '<span class="offline">● Upload failed</span>';
+                document.getElementById('status').innerHTML = '<span class="offline">● Upload failed</span><button id="refreshBtn" class="refresh-btn">Refresh</button>';
+                document.getElementById('refreshBtn').addEventListener('click', refreshData);
                 setTimeout(() => {
-                    document.getElementById('status').innerHTML = '<span class="online">● Connected</span>';
+                    document.getElementById('status').innerHTML = '<span class="online">● Connected</span><button id="refreshBtn" class="refresh-btn">Refresh</button>';
+                    document.getElementById('refreshBtn').addEventListener('click', refreshData);
                 }, 3000);
             }
 
@@ -623,6 +654,47 @@
                     }
                 })
                 .subscribe();
+        }
+
+        function setupRefreshButton() {
+            const refreshBtn = document.getElementById('refreshBtn');
+            refreshBtn.addEventListener('click', refreshData);
+        }
+
+        async function refreshData() {
+            try {
+                // Show refreshing state
+                const statusElement = document.getElementById('status');
+                const originalContent = statusElement.innerHTML;
+                statusElement.innerHTML = '<span class="online">● Refreshing...</span><button id="refreshBtn" class="refresh-btn">Refresh</button>';
+                
+                // Re-setup the refresh button click handler
+                document.getElementById('refreshBtn').addEventListener('click', refreshData);
+                
+                // Reload all data
+                await loadSiteNumber();
+                await loadInternalPhoto();
+                await loadOverallPhoto();
+                
+                // Show success state
+                statusElement.innerHTML = '<span class="online">● Connected</span><button id="refreshBtn" class="refresh-btn">Refresh</button>';
+                
+                // Re-setup the refresh button click handler again
+                document.getElementById('refreshBtn').addEventListener('click', refreshData);
+                
+            } catch (error) {
+                console.error('Error refreshing data:', error);
+                const statusElement = document.getElementById('status');
+                statusElement.innerHTML = '<span class="offline">● Refresh failed</span><button id="refreshBtn" class="refresh-btn">Refresh</button>';
+                
+                // Re-setup the refresh button click handler
+                document.getElementById('refreshBtn').addEventListener('click', refreshData);
+                
+                setTimeout(() => {
+                    statusElement.innerHTML = '<span class="online">● Connected</span><button id="refreshBtn" class="refresh-btn">Refresh</button>';
+                    document.getElementById('refreshBtn').addEventListener('click', refreshData);
+                }, 3000);
+            }
         }
 
         function setupInputHandler() {
